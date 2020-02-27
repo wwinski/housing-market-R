@@ -1,0 +1,53 @@
+---
+title: "Housing Market Neural Network"
+output: html_notebook
+---
+
+---
+
+The goal of this phase is to create a neural network using Keras that can provide a more accurate prediction than the linear model from the first phase. Given the plan for Phase 3, this model will only be trained and tested on the data prior to July 2017 (estimated turning point in the market).
+
+Analysis/visualization of the data was done in Phase 1 and has not been included here, though data gathering/cleaning code has been copied over.
+
+---
+
+
+##Importing required libraries
+```{r, warning=FALSE}
+require(MASS)
+require(ISLR)
+require(tidyverse)
+require(corrplot)
+require(lubridate)
+```
+
+
+## Read in and view the data
+```{r}
+house_dat = read.csv(url("https://utdallas.box.com/shared/static/of3rop2aqitzxz9ov8uvkg4inh8s6kws.csv"))
+head(house_dat)
+```
+
+##Clean and reformat the data
+```{r}
+clean_house_dat = house_dat[!is.na(house_dat$Price), ]
+clean_house_dat$Date = dmy(clean_house_dat$Date)
+clean_house_dat$Year_Month = format(as.Date(clean_house_dat$Date), "%Y-%m")
+clean_house_dat$Year = format(as.Date(clean_house_dat$Date), "%Y")
+clean_house_dat$Month = format(as.Date(clean_house_dat$Date), "%m")
+clean_house_dat$Day = format(as.Date(clean_house_dat$Date), "%d")
+
+head(clean_house_dat)
+```
+
+```{r}
+#The vast majority of the houses have less than 7 rooms, limiting to only those - removes 68 rows
+clean_house_dat = clean_house_dat[clean_house_dat$Rooms < 7, ]
+```
+
+```{r}
+#Read in the data as tibbles
+house_df = as_tibble(clean_house_dat)
+#Cleaning up memory
+rm("house_dat")
+```
