@@ -9,8 +9,8 @@ Data taken from [Kaggle](https://www.kaggle.com/anthonypino/melbourne-housing-ma
 **Phase 1**  
 The first phase of this project is to do simple analysis of the data. The purpose of this analysis is to identify when the market turned and to determine what features can be used to predict price. Following the analysis comes the creation of linear regression models for before and after the market downturn.
 
-- [R Notebook (HTML)](https://github.com/wwinski/housing-market-R/blob/master/Housing%20Linear%20Regression%20Notebook.html)
-- [R Notebook (Code)](https://github.com/wwinski/housing-market-R/blob/master/Housing%20Linear%20Regression.Rmd)
+- [R Notebook (HTML)](https://github.com/wwinski/housing-market-R/blob/master/Phase1/Housing%20Linear%20Regression%20Notebook.html)
+- [R Notebook (Code)](https://github.com/wwinski/housing-market-R/blob/master/Phase1/Housing%20Linear%20Regression.Rmd)
 
 ---
 
