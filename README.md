@@ -18,6 +18,9 @@ The first phase of this project is to do simple analysis of the data. The purpos
 *In Progress*  
 The goal of the second phase is to iterate on the analysis from Phase 1 to generate a more accurate model using Keras Neural Networks. The output of this model has yet to be decided, either predictions for price of individual properties or predictions of mean/median price for a given time period. Ideally, with the more complex model, I will be able to achieve accuracy greater than 85%.
 
+- [R Notebook (HTML)](https://github.com/wwinski/housing-market-R/blob/master/Phase2/Housing%20Neural%20Network.nb.html)
+- [R Notebook (Code)](https://github.com/wwinski/housing-market-R/blob/master/Phase2/Housing%20Neural%20Network.Rmd)
+
 ---
 
 **Phase 3**  
