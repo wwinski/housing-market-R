@@ -1,0 +1,223 @@
+---
+title: "Housing Market Linear Regression"
+output: html_notebook
+---
+
+The primary goal of this project is to create a linear model that estimates property value. As the dataset includes a downturn in the market, my plan is to first identify when the downturn happened, and then train linear models for before and after. If my estimation of the turn in the market is accurate, the two models should perform better than a single model based on the entire dataset.
+
+
+
+
+##Importing required libraries
+```{r, warning=FALSE}
+require(MASS)
+require(ISLR)
+require(tidyverse)
+require(corrplot)
+require(lubridate)
+```
+
+
+## Read in and view the data
+```{r}
+house_dat = read.csv(url("https://utdallas.box.com/shared/static/of3rop2aqitzxz9ov8uvkg4inh8s6kws.csv"))
+head(house_dat)
+```
+
+##Clean and reformat the data
+```{r}
+clean_house_dat = house_dat[!is.na(house_dat$Price), ]
+clean_house_dat$Date = dmy(clean_house_dat$Date)
+clean_house_dat$Year_Month = format(as.Date(clean_house_dat$Date), "%Y-%m")
+clean_house_dat$Year = format(as.Date(clean_house_dat$Date), "%Y")
+clean_house_dat$Month = format(as.Date(clean_house_dat$Date), "%m")
+clean_house_dat$Day = format(as.Date(clean_house_dat$Date), "%d")
+
+head(clean_house_dat)
+```
+
+## Need to identify when the market turned. Creating visualizations
+```{r}
+#Plotting price vs date
+plot(clean_house_dat$Date, clean_house_dat$Price)
+```
+
+```{r}
+#Plot the price vs date for each type
+ggplot(data = clean_house_dat) + geom_point(mapping=aes(x=Year_Month, y=Price)) + facet_wrap(~ Type, nrow=3)
+```
+
+```{r}
+#Same as the above, but seperate by number of rooms
+ggplot(data = clean_house_dat) + geom_point(mapping=aes(x=Year_Month, y=Price)) + facet_wrap(~ Rooms)
+```
+
+The above indicates the vast majority of houses have less than 7 rooms, verifying and removing them from the dataset
+```{r}
+table(clean_house_dat$Rooms)
+hist(clean_house_dat$Rooms, freq = FALSE)
+```
+
+```{r}
+#The vast majority of the houses have less than 7 rooms, limiting to only those - removes 68 rows
+clean_house_dat = clean_house_dat[clean_house_dat$Rooms < 7, ]
+```
+
+
+Visualizing the updated data. Looking at the prices year over year might help us narrow our search to a single year
+```{r}
+ggplot(data = clean_house_dat) + geom_point(mapping=aes(x=Year, y=Price)) + facet_wrap(~ Rooms)
+```
+
+
+
+Based on the above, we can assume the downturn happened between 2017 and 2018, plotting the above as month over month in that timeframe
+```{r}
+one_year_dat = clean_house_dat[clean_house_dat$Year == 2017, ]
+ggplot(data = one_year_dat) + geom_point(mapping=aes(x=Month, y=Price)) + facet_wrap(~ Rooms)
+```
+
+Using individual house prices isn't giving much clarity. Let's try mean and median prices
+```{r}
+#Read in the data as tibbles
+house_df = as_tibble(clean_house_dat)
+year_df = as_tibble(one_year_dat)
+#Cleaning up memory
+rm(list=c("house_dat", "clean_house_dat", "one_year_dat"))
+```
+
+Month over month data for MEAN
+```{r}
+ggplot(year_df %>% group_by(Month, Rooms) %>% summarise(meanPrice = mean(Price))) +
+    geom_point(mapping=aes(x=Month, y=meanPrice)) + facet_wrap(~ Rooms)
+```
+
+Month over month data for MEDIAN
+```{r}
+ggplot(year_df %>% group_by(Month, Rooms) %>% summarise(medPrice = median(Price))) +
+    geom_point(mapping=aes(x=Month, y=medPrice)) + facet_wrap(~ Rooms)
+```
+
+##The above, particularly the 3 and 4 bedroom plots, indicate a drop in July 2017 followed by a market decline. Let's plot the same month over month data for the entire timeline and see if we can identify the same drop.
+
+Full timeline month over month MEAN
+```{r}
+ggplot(house_df %>% group_by(Year_Month, Rooms) %>% summarise(meanPrice = mean(Price))) +
+    geom_point(mapping=aes(x=Year_Month, y=meanPrice)) + facet_wrap(~ Rooms)
+```
+
+Full timeline month over month MEDIAN
+```{r}
+ggplot(house_df %>% group_by(Year_Month, Rooms) %>% summarise(medPrice = median(Price))) +
+    geom_point(mapping=aes(x=Year_Month, y=medPrice)) + facet_wrap(~ Rooms)
+```
+
+##For the 1-4 bedroom cases we can see a generally positive trend prior to July 2017, followed by instability and a negative trend afterwards
+
+Assuming July 2017 is the turning point, we need to separate the data to before and after
+```{r}
+before_df = filter(house_df, Date < "2017-07-01")
+after_df = filter(house_df, Date >= "2017-08-01")
+```
+
+##At this point we want to identify what features to use in our linear model
+```{r}
+#Time to see what the correlation is between the different numeric variables and price
+before_M <- cor(before_df[, sapply(house_df, is.numeric)])
+after_M <- cor(after_df[, sapply(house_df, is.numeric)])
+corrplot(before_M, method = "number")
+corrplot(after_M, method = "number")
+```
+
+We can see that Rooms and Distance have high correlation in both cases, let's start with those
+```{r}
+before.fit=lm(before_df$Price ~ before_df$Rooms)
+summary(before.fit)
+after.fit=lm(after_df$Price ~ after_df$Rooms)
+summary(after.fit)
+```
+
+```{r}
+#Adding Distance to the models
+before.fit = update(before.fit, . ~ . + before_df$Distance)
+summary(before.fit)
+after.fit = update(after.fit, . ~ . + after_df$Distance)
+summary(after.fit)
+```
+
+##The following section is iterating on the models by adding/removing features based on performance
+
+```{r}
+#Adding Type to the models
+before.fit = update(before.fit, . ~ . + before_df$Type)
+summary(before.fit)
+after.fit = update(after.fit, . ~ . + after_df$Type)
+summary(after.fit)
+```
+
+```{r}
+#Adding Regionname to the models
+before.fit = update(before.fit, . ~ . + before_df$Regionname)
+summary(before.fit)
+after.fit = update(after.fit, . ~ . + after_df$Regionname)
+summary(after.fit)
+```
+
+Regionname brough up R^2, but dropped F-statistic by a lot. Dropping regionname
+
+```{r}
+#Dropping regionname
+before.fit = update(before.fit, . ~ . - before_df$Regionname)
+after.fit = update(after.fit, . ~ . - after_df$Regionname)
+#Adding Suburb to the models
+before.fit = update(before.fit, . ~ . + before_df$Suburb)
+summary(before.fit)
+after.fit = update(after.fit, . ~ . + after_df$Suburb)
+summary(after.fit)
+```
+
+Adding suburb complicated the model and dropped the F-Statistic by a lot, but almost doubled our R^2 value. Keeping it for now
+
+At this point I tried to use postcode instead of suburb, but postcode is read in as a number and not a category. Couldn't find a clean way to transform it, so I've removed that.
+Afterwards I added each of the remaining variables, but they had trivial or negative impact on the model.
+
+##Proceeding with the current model
+
+```{r}
+#Assuming this is the best model we can make, time to visualize
+qqnorm(resid(before.fit))
+qqline(resid(before.fit))
+qqnorm(resid(after.fit))
+qqline(resid(after.fit))
+```
+
+Based on the Q-Q Plot, the data seems to not be linear, trying polynomial transformation
+```{r}
+before.poly = update(before.fit, poly(.) ~ .)
+qqnorm(resid(before.poly))
+qqline(resid(before.poly))
+after.poly = update(after.fit, poly(.) ~ .)
+qqnorm(resid(after.poly))
+qqline(resid(after.poly))
+```
+
+Polynomial looks to match about as well as linear. Trying a natural log (ln) transformation
+```{r}
+before.ln = update(before.fit, log1p(.) ~ .)
+qqnorm(resid(before.ln))
+qqline(resid(before.ln))
+after.ln = update(after.fit, log1p(.) ~ .)
+qqnorm(resid(after.ln))
+qqline(resid(after.ln))
+```
+
+Both transformations are imperfect, but the ln transformation seems to be a better predictor, and very accurate around the median
+```{r}
+#Getting summary data for the ln transformation
+summary(before.ln)
+summary(after.ln)
+```
+
+##The before and after models with ln transformation acheive Adjusted R-Squared values of 0.77 and 0.78 respectively.
+
+##Part of the Kaggle challenge that this data was pulled from was to see if you could identify the downturn in the market as it was happening. Next steps for me are to generate a more accurate model (using neural networks) and find a way to identify the downturn of the market.
